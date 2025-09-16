@@ -1,0 +1,58 @@
+#include <iostream>
+#include <thread>
+#include <atomic>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <unistd.h>
+#include <signal.h>
+
+std::atomic<int> latestValue{-1};
+pid_t scriptPid=-1;
+
+void launchScriptAndMonitor() {
+    int pipefd[2];
+    pipe(pipefd);
+    scriptPid = fork();
+    if (scriptPid == 0) {    // Child process
+      setpgid(0, 0); // Create new process group
+      dup2(pipefd[1], STDOUT_FILENO);
+      close(pipefd[0]);
+      execlp("stdbuf", "stdbuf", "-oL", "-eL", "./p3em.sh", nullptr);
+      exit(1); // If exec fails
+    }
+
+    // Parent process: read from pipe
+    close(pipefd[1]);
+    FILE* stream = fdopen(pipefd[0], "r");
+    char buffer[256];
+    while (fgets(buffer, sizeof(buffer), stream)) {
+        std::istringstream iss(buffer);
+        std::string word;
+        while (iss >> word); // get last word
+        try {
+            latestValue = std::stoi(word);
+        } catch (...) {}
+    }
+    fclose(stream);
+}
+
+int getLatestValue() {
+    return latestValue.load();
+}
+
+int main() {
+    std::thread monitorThread(launchScriptAndMonitor);
+    std::this_thread::sleep_for(std::chrono::seconds(2)); // Wait a bit for init
+
+    // Simulate usage
+    for (int i = 0; i < 10; ++i) {
+        std::cout << "Latest value: " << getLatestValue() << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    }
+
+    // Cleanup
+    if (scriptPid > 0) killpg(scriptPid, SIGTERM); // Kill entire process group
+    monitorThread.join();
+    return 0;
+}
