@@ -7,6 +7,9 @@
 //  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 //  language governing permissions and limitations under the License.
 
+#ifndef p3em
+#define p3em
+
 #include <iostream>
 #include <thread>
 #include <atomic>
@@ -50,18 +53,4 @@ int getLatestValue() {
     return latestValue.load();
 }
 
-int main() {
-    std::thread monitorThread(launchScriptAndMonitor);
-    std::this_thread::sleep_for(std::chrono::seconds(2)); // Wait a bit for init
-
-    // Simulate usage
-    for (int i = 0; i < 10; ++i) {
-        std::cout << "Latest value: " << getLatestValue() << std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));
-    }
-
-    // Cleanup
-    if (scriptPid > 0) killpg(scriptPid, SIGTERM); // Kill entire process group
-    monitorThread.join();
-    return 0;
-}
+#endif
