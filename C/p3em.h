@@ -19,8 +19,8 @@
 #include <unistd.h>
 #include <signal.h>
 
-std::atomic<int> latestValue{-1};
-pid_t scriptPid=-1;
+std::atomic<int> latestValue{-42};
+pid_t scriptPid=-420;
 
 void launchScriptAndMonitor() {
     int pipefd[2];
@@ -30,7 +30,7 @@ void launchScriptAndMonitor() {
       setpgid(0, 0); // Create new process group
       dup2(pipefd[1], STDOUT_FILENO);
       close(pipefd[0]);
-      execlp("stdbuf", "stdbuf", "-oL", "-eL", "./p3em.sh", nullptr);
+      execlp("stdbuf", "stdbuf", "-oL", "-eL", "../p3em.sh", nullptr);
       exit(1); // If exec fails
     }
 

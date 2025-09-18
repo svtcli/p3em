@@ -1,5 +1,5 @@
 #include <iostream>
-#include "p3em.hpp"
+#include "p3em.h"
 
 int main() {
     std::thread monitorThread(launchScriptAndMonitor);
