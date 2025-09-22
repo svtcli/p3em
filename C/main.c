@@ -1,16 +1,20 @@
-#include <iostream>
+#include <stdio.h>
+#include <sys/wait.h>
 #include "p3em.h"
 
+static p3em_t global_monitor;
+
 int main() {
-    std::thread monitorThread(launchScriptAndMonitor);
-    std::this_thread::sleep_for(std::chrono::seconds(2)); // Wait a bit for init
-    // Simulate usage
-    for (int i = 0; i < 10; ++i) {
-        std::cout << "Latest value: " << getLatestValue() << std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));
-    }
-    // Cleanup
-    if (scriptPid > 0) killpg(scriptPid, SIGTERM); // Kill entire process group
-    monitorThread.join();
-    return 0;
+  if (p3em_init(&global_monitor, "../p3em.sh") != 0) {
+    printf("Failed to initialize p3em\n");
+    return 1;
+  }
+  // Simulate usage
+  for (int i = 0; i < 1000; ++i) {
+    printf("Latest value: %d\n", p3em_getLatestValue(&global_monitor));
+    usleep(30000);
+  }
+
+  p3em_cleanup(&global_monitor);
+  return 0;
 }

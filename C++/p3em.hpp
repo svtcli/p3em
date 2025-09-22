@@ -20,55 +20,56 @@
 
 class p3em {
 private:
-    std::atomic<int> latestValue{-42};
-    pid_t scriptPid = -420;
-    int pipefd[2];  // Declare as member
-    FILE* stream = nullptr;  // Initialize to nullptr, set later
-    char buffer[256];
-    std::string prName;
-    std::thread monitorThread;
+  std::atomic<int> latestValue{-42};
+  pid_t scriptPid = -420;
+  int pipefd[2];  // Declare as member
+  FILE* stream = nullptr;  // Initialize to nullptr, set later
+  char buffer[256];
+  std::string prName;
+  std::thread monitorThread;
 
-    void launchScriptAndMonitor() {
-        pipe(pipefd);
-        scriptPid = fork();
-        if (scriptPid == 0) {    // Child process
-            setpgid(0, 0); // Create new process group
-            dup2(pipefd[1], STDOUT_FILENO);
-            close(pipefd[0]);
-            close(pipefd[1]);
-            execlp("stdbuf", "stdbuf", "-oL", "-eL", prName.c_str(), nullptr);  // Use prName.c_str()
-            exit(1); // If exec fails
-        }
-        // Parent process: read from pipe
-        close(pipefd[1]);
-        stream = fdopen(pipefd[0], "r");  // Initialize stream here
-
-        while (fgets(buffer, sizeof(buffer), stream)) {
-            std::istringstream iss(buffer);
-            std::string word;
-            while (iss >> word); // get last word
-            try {
-                latestValue = std::stoi(word);
-            } catch (...) {}
-        }
-        if (stream) fclose(stream);
+  void launchScriptAndMonitor() {
+    pipe(pipefd);
+    scriptPid = fork();
+    if (scriptPid == 0) {    // Child process
+      setpgid(0, 0); // Create new process group
+      dup2(pipefd[1], STDOUT_FILENO);
+      close(pipefd[0]);
+      close(pipefd[1]);
+      execlp("stdbuf", "stdbuf", "-oL", "-eL", prName.c_str(), nullptr);  // Use prName.c_str()
+      exit(1); // If exec fails
     }
+    // Parent process: read from pipe
+    close(pipefd[1]);
+    stream = fdopen(pipefd[0], "r");  // Initialize stream here
+
+    while (fgets(buffer, sizeof(buffer), stream)) {
+      std::istringstream iss(buffer);
+      std::string word;
+      while (iss >> word); // get last word
+      try {
+          latestValue = std::stoi(word);
+      } catch (...) {}
+    }
+    if (stream) fclose(stream);
+  }
 
 public:
-    p3em(const std::string& name) : prName(name) {
-        // Start thread after all members are initialized
-        monitorThread = std::thread(&p3em::launchScriptAndMonitor, this);
-        while (true){ if(getLatestValue()>0) break;} // Wait for 1st read
+  p3em(const std::string& name) : prName(name) {
+    // Start thread after all members are initialized
+    monitorThread = std::thread(&p3em::launchScriptAndMonitor, this);
+    while(getLatestValue()<=0){ // Wait for 1st read
+     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+  }
+  ~p3em() {
+    if (scriptPid > 0)            killpg(scriptPid, SIGKILL);
+    if (monitorThread.joinable()) monitorThread.join();
+  }
 
-    ~p3em() {
-        if (scriptPid > 0) killpg(scriptPid, SIGKILL);
-        if (monitorThread.joinable()) monitorThread.join();
-    }
-
-    int getLatestValue() {
-        return latestValue.load();
-    }
+  int getLatestValue() {
+    return latestValue.load();
+  }
 };
 
 #endif
