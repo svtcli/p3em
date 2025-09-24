@@ -1,0 +1,18 @@
+   interface
+      function handle_to_p3em(filename) bind(C, name="handle_to_p3em")
+         use iso_c_binding, only: c_ptr, c_char
+         type(c_ptr) :: handle_to_p3em
+         character(kind=c_char), dimension(*) :: filename
+      end function
+
+      subroutine free_handle(handle) bind(C, name="free_handle")
+         use iso_c_binding, only: c_ptr
+         type(c_ptr), value :: handle
+      end subroutine
+
+      function p3em_getLatestValue(handle) bind(C, name="p3em_getLatestValue")
+         use iso_c_binding, only: c_ptr, c_int
+         integer(c_int) :: p3em_getLatestValue
+         type(c_ptr), value :: handle
+      end function
+   end interface
