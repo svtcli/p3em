@@ -34,28 +34,30 @@ typedef struct {
 } p3em_t;
 
 // Function declarations
-int   p3em_init(p3em_t* p3em, const char* name);
+int   p3em_init(p3em_t** p3em, const char* name);
 void  p3em_cleanup(p3em_t* p3em);
 int   p3em_getLatestValue(p3em_t* p3em);
 void* p3em_launchScriptAndMonitor(void* arg); // Internal
 
 // Implementation
-int p3em_init(p3em_t* p3em, const char* name) {
-  if (!p3em || !name) return -1;
+int p3em_init(p3em_t** p3em, const char* name) {
+  if(!name) return -1;
   // Check name length
   if (strlen(name) >= P3EM_MAX_NAME_LEN) return -1;
   // Initialize members
-  atomic_init(&p3em->latestValue, -42);
-  p3em->scriptPid = -420;
-  p3em->stream = NULL;
-  p3em->should_stop = 0;
-  p3em->initialized = 0;
-  strcpy(p3em->prName, name);  // Copy the name
+  p3em_t* temp = malloc(sizeof(p3em_t));  if (!temp)  return -1;
+  *p3em = temp;
+  atomic_init(&temp->latestValue, -42);
+  temp->scriptPid = -420;
+  temp->stream = NULL;
+  temp->should_stop = 0;
+  temp->initialized = 0;
+  strcpy(temp->prName, name);  // Copy the name
   // Start monitoring thread
-  p3em->initialized = pthread_create(&p3em->monitorThread,NULL,p3em_launchScriptAndMonitor,p3em);
-  if(p3em->initialized != 0) return -1;
+  temp->initialized = pthread_create(&temp->monitorThread,NULL,p3em_launchScriptAndMonitor,temp);
+  if(temp->initialized != 0) return -1;
   // Wait for first read; small delay to prevent busy waiting
-  while(p3em_getLatestValue(p3em)<=0) usleep(1000);
+  while(p3em_getLatestValue(temp)<=0) usleep(1000);
   return 0;
 }
 
@@ -68,6 +70,7 @@ void p3em_cleanup(p3em_t* p3em) {
   }
   pthread_join(p3em->monitorThread, NULL);   // Wait for thread to finish
   p3em->initialized = 0;
+  free(p3em);
 }
 
 int p3em_getLatestValue(p3em_t* p3em) {

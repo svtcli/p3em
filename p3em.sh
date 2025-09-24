@@ -15,9 +15,10 @@ MSEC=$(echo "scale=0; 1000 * $SEC /1 " | bc -l)
 
 #perf stat -a -e power/energy-pkg/ --log-fd 1 -Sr 0  sleep $SEC | awk '/Jou/ {gsub(/,/, ".", $0); sum += $1+1; printf "%d\n", sum}'
 
-unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null | awk '{s += $3+0} ((NR+2)%4)==0 {printf "%d\n", s; s = 0}'
+#unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null | awk '{s += $3+0} ((NR+2)%4)==0 {printf "%d\n", s; s = 0}'
 
-#unbuffer likwid-perfctr -c 0,24 -g ENERGY -t ${MSEC}ms  | awk  '{sum+=$10+0 ; printf "%d\n", sum}'
+# EXPERIMENTAL; likely wrong but can be fixed
+#unbuffer likwid-perfctr -c 0,24 -g ENERGY -t ${MSEC}ms  | awk  '{sum+=$10+0 ; printf "%d\n", sum; fflush()}'
 
 #nvidia-smi -lms $MSEC --query-gpu=power.draw --format=csv,nounits,noheader | awk -v t=$SEC '{sum+=$1+0; printf "%d\n" sum/t}'
 
