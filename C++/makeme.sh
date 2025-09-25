@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
-#   Copyright(C) 2025 Alexander Pöppl, Intel Corporation
+#!/bin/bash
 #   Copyright(C) 2025 Salvatore Cielo, Leibniz-Rechenzentrum
+#   Copyright(C) 2025 Alexander Pöppl, Intel Corporation
 #   Copyright(C) 2025 Ivan Pribec, Leibniz-Rechenzentrum
 #
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the
@@ -10,20 +10,7 @@
 #  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 #  language governing permissions and limitations under the License.
 
-import time
-from p3em import ScriptMonitor
+#- choose compiler
+MYCXX=icpx
 
-def main():
-    monitor = ScriptMonitor("../p3em.sh")
-    monitor.launch_and_monitor()
-    time.sleep(10)
-    try:
-        for i in range(10):
-            value = monitor.get_latest_value()
-            print(f"Latest value: {value}")
-            time.sleep(0.03)
-    finally:
-        monitor.stop()
-
-if __name__ == "__main__":
-    main()
+$MYCXX -o main main.cpp -pthread
