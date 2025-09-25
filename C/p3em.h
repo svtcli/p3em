@@ -1,4 +1,6 @@
 //   Copyright(C) 2025 Salvatore Cielo, LRZ
+//   Copyright(C) 2025 Alexander Pöppl, Intel Corporation
+//   Copyright(C) 2025 Ivan Pribec, LRZ
 //
 //  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the
 //  License. You may obtain a copy of the License at    http://www.apache.org/licenses/LICENSE-2.0
@@ -54,15 +56,15 @@ int p3em_init(p3em_t** p3em, const char* name) {
   temp->initialized = 0;
   strcpy(temp->prName, name);  // Copy the name
   // Start monitoring thread
-  temp->initialized = pthread_create(&temp->monitorThread,NULL,p3em_launchScriptAndMonitor,temp);
-  if(temp->initialized != 0) return -1;
+  temp->initialized = !pthread_create(&temp->monitorThread,NULL,p3em_launchScriptAndMonitor,temp);
+  if(temp->initialized == 0) return -1;
   // Wait for first read; small delay to prevent busy waiting
   while(p3em_getLatestValue(temp)<=0) usleep(1000);
   return 0;
 }
 
 void p3em_cleanup(p3em_t* p3em) {
-  if (!p3em || !p3em->initialized) return;
+  if (!p3em || !(p3em->initialized)) return;
   p3em->should_stop = 1;  // Signal thread to stop
   if (p3em->scriptPid > 0) {   // Kill the script process group
     killpg(p3em->scriptPid, SIGKILL);

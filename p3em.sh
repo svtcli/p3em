@@ -8,21 +8,28 @@
 #  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 #  language governing permissions and limitations under the License.
 
+#- Time resolution (try it)
 SEC=${1:-0.01}
-MSEC=$(echo "scale=0; 1000 * $SEC /1 " | bc -l)
+MSEC=$(echo $SEC | awk '{print $1 * 1000}')
+#- GPUs per node (for xpu-smi)
+GPN=4
 
-#while true ; do date "+%s" ; sleep $SEC ; done # TEST
+#- Debugging test, prints time in seconds
+#while true ; do date "+%s" ; sleep $SEC ; done
 
+#- CPU measuring via perf
 #perf stat -a -e power/energy-pkg/ --log-fd 1 -Sr 0  sleep $SEC | awk '/Jou/ {gsub(/,/, ".", $0); sum += $1+1; printf "%d\n", sum}'
 
-#unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null | awk '{s += $3+0} ((NR+2)%4)==0 {printf "%d\n", s; s = 0}'
-
-# EXPERIMENTAL; likely wrong but can be fixed
+#- CPU via likwid. EXPERIMENTAL; likely wrong but can be fixed
 #unbuffer likwid-perfctr -c 0,24 -g ENERGY -t ${MSEC}ms  | awk  '{sum+=$10+0 ; printf "%d\n", sum; fflush()}'
 
-#nvidia-smi -lms $MSEC --query-gpu=power.draw --format=csv,nounits,noheader | awk -v t=$SEC '{sum+=$1+0; printf "%d\n" sum/t}'
+#- Intel GPUs via xpu-smi
+unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null | awk -v gpn=$GPN '{s += $3+0} ((NR+2)%gpn)==0 {printf "%d\n", s; s = 0}'
 
-#- AMD is not great in general as it doesn't have a daemon mode.
+#- Nvidia GPUs via nvidia-smi
+#nvidia-smi -lms $MSEC --query-gpu=power.draw --format=csv,nounits,noheader | awk -v t=$SEC '{sum+=$1+0; printf "%d\n", sum/t}'
+
+#- AMD smis are not great in general as lack a daemon mode.
 #-- AMD w rocm-smi, a bit faster: latency is about 0.5 sec
 #Z=$(rocm-smi --showenergycounter --csv | awk -F"," '{sum+=$3+0}END{printf "%d\n",sum/1E6}');
 #while true; do rocm-smi --showenergycounter --csv | awk -F"," -v z=$Z '{sum+=($3+0)}END{printf "%d\n",sum/1E6-z+5000}' ; done

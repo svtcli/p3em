@@ -1,0 +1,28 @@
+!   Copyright(C) 2025 Ivan Pribec, LRZ
+!   Copyright(C) 2025 Alexander Pöppl, Intel Corporation
+!   Copyright(C) 2025 Salvatore Cielo, LRZ
+!
+!  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the
+!  License. You may obtain a copy of the License at    http:#www.apache.org/licenses/LICENSE-2.0
+!
+!  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an
+!  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
+!  language governing permissions and limitations under the License.
+
+interface
+    function p3em_init(p3em,name) bind(c)
+        use, intrinsic :: iso_c_binding
+        type(c_ptr) :: p3em
+        character(len=1,kind=c_char) :: name(*)
+        integer(c_int) :: p3em_init
+    end function
+    subroutine p3em_cleanup(p3em) bind(c)
+        use, intrinsic :: iso_c_binding
+        type(c_ptr), value :: p3em
+    end subroutine
+    function p3em_getlatestvalue(p3em) bind(c,name="p3em_getLatestValue")
+        use, intrinsic :: iso_c_binding
+        type(c_ptr), value :: p3em
+        integer(c_int) :: p3em_getlatestvalue
+    end function
+end interface
