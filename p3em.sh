@@ -27,7 +27,7 @@ GPN=4
 unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null | awk -v gpn=$GPN '{s += $3+0} ((NR+2)%gpn)==0 {printf "%d\n", s; s = 0}'
 
 #- Nvidia GPUs via nvidia-smi
-#nvidia-smi -lms $MSEC --query-gpu=power.draw --format=csv,nounits,noheader | awk -v t=$SEC '{sum+=$1+0; printf "%d\n", sum/t}'
+#nvidia-smi -lms $MSEC --query-gpu=power.draw --format=csv,nounits,noheader | awk -v t=$SEC '{sum+=$1+0; printf "%d\n", sum*t}'
 
 #- AMD smis are not great in general as lack a daemon mode.
 #-- AMD w rocm-smi, a bit faster: latency is about 0.5 sec
