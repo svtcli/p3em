@@ -7,9 +7,12 @@
 - Encapsulated in *unix* shell for complete freedom of interface and portability.
 - Add any custom energy meter simply by executing in shell.
 
-## Usage 
+## Usage  
+Open `p3em.sh`, uncomment the right energy meter section for your system (or add your own, see below) to get accumulated energy consumption of your node.
+
 The flexibility and low latency of `p3em` makes it perfect to profile energy consumption of _regions of interest_ in your of code.
-If you are at this point, you likely have already your regions of interest marked by your _internal code timer_. If not, add one right now (examples go here). 
+If you are at this point, you likely have already your regions of interest marked by your _internal code timer_. If not, add one right now 
+(for a compact one you may look into [this one](https://github.com/svtcli/tmr)). 
 
 We won't give you yet another API. 
 
@@ -24,7 +27,7 @@ A likely workflow:
 - run your code without any change
 - process the performance measures with your usual pipeline.
 
-For further examples look here: (link Tmr project after submoduled.)
+For further examples you may look at the [timer linked above](https://github.com/svtcli/tmr/).
 
 Not what you are looking for right now? Read below to understand and customize `p3em`'s behaviour.
 
@@ -40,5 +43,4 @@ measures? Include memory/disk? Adding CPU and GPU together? See below!
 ## Add your own energy meter
 Simply add your own executable or script, written in your favourite language, printing any running total 
 of consumed energy, and lowest possible latency, following the example. 
-Just run `p3em.sh` in your shell for visualising it.
-examples: (link Ivan's nvml timer).
+Just run `p3em.sh` and play with it in your shell for visual clarity.
