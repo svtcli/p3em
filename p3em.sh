@@ -18,13 +18,15 @@ GPN=4
 #while true ; do date "+%s" ; sleep $SEC ; done
 
 #- CPU measuring via perf
-#perf stat -a -e power/energy-pkg/ --log-fd 1 -Sr 0  sleep $SEC | awk '/Jou/ {gsub(/,/, ".", $0); sum += $1+1; printf "%d\n", sum}'
+#perf stat -a -e power/energy-pkg/ --log-fd 1 -Sr 0  sleep $SEC | awk '/Jou/ {gsub(/,/,"", $0); sum += $1+0; printf "%d\n", sum}'
+#perf stat -a -e power/energy-pkg/ -SI $MSEC | awk '/Jou/ {gsub(/,/,"", $0); sum += $1+0; print sum}'
+unbuffer perf stat -a -e power/energy-pkg/ -I $MSEC | awk '{sum+=$2+0; print sum}'
 
 #- CPU via likwid. EXPERIMENTAL; likely wrong but can be fixed
 #unbuffer likwid-perfctr -c 0,24 -g ENERGY -t ${MSEC}ms  | awk  '{sum+=$10+0 ; printf "%d\n", sum; fflush()}'
 
 #- Intel GPUs via xpu-smi
-unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null | awk -v gpn=$GPN '{s += $3+0} ((NR+2)%gpn)==0 {printf "%d\n", s; s = 0}'
+#unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null | awk -v gpn=$GPN '{s+=$3+0}((NR+2)%gpn)==0 {print s%1E6; s=0}'
 
 #- Nvidia GPUs via nvidia-smi
 #nvidia-smi -lms $MSEC --query-gpu=power.draw --format=csv,nounits,noheader | awk -v t=$SEC '{sum+=$1+0; printf "%d\n", sum/t}'
