@@ -9,22 +9,24 @@
 #  language governing permissions and limitations under the License.
 
 #- Time resolution (try it)
-SEC=${1:-0.01}
+SEC=${1:-0.1}
 MSEC=$(echo $SEC | awk '{print $1 * 1000}')
 #- GPUs per node (for xpu-smi)
 GPN=4
+#- logical cores per node (for likwid)
+CPN=$(lscpu | grep CPU\(s\) | awk '{sum+=$2+0}(NR==1){print sum}')
 
 #- Debugging test, prints time in seconds
 #while true ; do date "+%s" ; sleep $SEC ; done
 
 #- CPU measuring via perf
-#perf stat -a -e power/energy-pkg/ --log-fd 1 -Sr 0  sleep $SEC | awk '/Jou/ {gsub(/,/, ".", $0); sum += $1+1; printf "%d\n", sum}'
+unbuffer perf stat -a -e power/energy-pkg/ -I $MSEC | awk '{sum+=$2+0; print sum}' # Perhaps add  -S to perf stat?
 
-#- CPU via likwid. EXPERIMENTAL; likely wrong but can be fixed
-#unbuffer likwid-perfctr -c 0,24 -g ENERGY -t ${MSEC}ms  | awk  '{sum+=$10+0 ; printf "%d\n", sum; fflush()}'
+#- CPU via likwid. EXPERIMENTAL, likely perfect
+#unbuffer likwid-perfctr -g PWR_PKG_ENERGY:PWR0 -t ${MSEC}ms | awk -v cpn=$CPN '(NR>7) {for(i=5;i<5+cpn;i++) total+=$i} {print total}'
 
 #- Intel GPUs via xpu-smi
-unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null | awk -v gpn=$GPN '{s += $3+0} ((NR+2)%gpn)==0 {printf "%d\n", s; s = 0}'
+#unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null | awk -v gpn=$GPN '{s+=$3+0}((NR+2)%gpn)==0 {print s%1E6; s=0}'
 
 #- Nvidia GPUs via nvidia-smi
 #nvidia-smi -lms $MSEC --query-gpu=power.draw --format=csv,nounits,noheader | awk -v t=$SEC '{sum+=$1+0; printf "%d\n", sum/t}'
