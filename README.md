@@ -1,7 +1,7 @@
 # p3em
 
 **P**ermitted, **P**ortable, **P**arsable **E**nergy **M**eter for CPUs and GPUs. 
-- Native `Intel`, `NVIDIA` and `AMD` GPU via `xxx-smi`. Native CPU support via `perf`
+- Native `Intel`, `NVIDIA` and `AMD` GPU via `xxx-smi`. Native CPU support via `perf` or `likwid`
 - Millisecond latency
 - Fortran, C, C++, Python examples provided
 - Encapsulated in *unix* shell for complete freedom of interface and portability.
