@@ -20,29 +20,26 @@ CPN=$(lscpu | grep CPU\(s\) | awk '{sum+=$2+0}(NR==1){print sum}')
 #while true ; do date "+%s" ; sleep $SEC ; done
 
 #- CPU measuring via perf
-unbuffer perf stat -a -e power/energy-pkg/ -I $MSEC | awk '{sum+=$2+0; print sum}' # Perhaps add  -S to perf stat?
+#unbuffer perf stat -a -e power/energy-pkg/ -I $MSEC | awk '{sum+=$2+0; print sum}' # Perhaps add  -S to perf stat?
 
 #- CPU via likwid. EXPERIMENTAL, likely perfect
 #unbuffer likwid-perfctr -g PWR_PKG_ENERGY:PWR0 -t ${MSEC}ms | awk -v cpn=$CPN '(NR>7) {for(i=5;i<5+cpn;i++) total+=$i} {print total}'
 
-#- hwmon counters (sum of all... for sure wrong! select your counters more carefully)
-#  Also NOT READY for production: indicative and system-specific; need more parsing
-#-- Always define these: match the files you need
-#HW_BASE="/sys/class/hwmon/hwmon?/device/"
-#HW_EXP=power1
-#HW_NUM=$(  ls $HW_BASE/${HW_EXP}_average | wc -l)
-#HW_TIME=$(cat $HW_BASE/${HW_EXP}_average_interval | awk '(NR==1){print $1/1000.0}')
-#-- if sensors not installed
-#while true; do tail -qn 1 $HW_BASE/${HW_EXP}_average; sleep $HW_TIME; done | awk -v n=$HW_NUM '{sum+=$1/1.0E6+0.0}(NR%n==(n-1)){print sum}'
-#-- sensors
-#while true; do sensors | grep $HW_EXP ; sleep $HW_TIME; done | awk -v n=$HW_NUM '{sum+=$2+0.0}(NR%n==(n-1)){print sum}'
+#- hwmon + nvidia-smi; uses helper script hwmon-smi.sh
+# Grep your combinations out of it... e.g.:
+#HW_EXP=PU_Power_Average # Will do CPU (hwmon) + GPU (nvidia-smi)
+HW_EXP=nvidia-smi_Module_Power_Average # Whole module
+
+HW_LINES=$(./hwmon-nvidia.sh | grep $HW_EXP | wc -l)
+while true; do ./hwmon-nvidia.sh | grep $HW_EXP; sleep $SEC; done | awk -v n=$HW_LINES '{sum+=$2+0.0}((NR%n)==(n-1)){print sum}'
 
 #- Intel GPUs via xpu-smi
 #GPN=$(( 1 + $(xpu-smi discovery --dump 1 2>/dev/null | tail -n 1)))
 #unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null | awk -v gpn=$GPN '{s+=$3+0}((NR+2)%gpn)==0 {print s%1E6; s=0}'
 
 #- Nvidia GPUs via nvidia-smi
-#nvidia-smi -lms $MSEC --query-gpu=power.draw --format=csv,nounits,noheader | awk -v t=$SEC '{sum+=$1+0; printf "%d\n", sum/t}'
+#nvidia-smi -lms $MSEC --query-gpu=power.draw --format=csv,nounits,noheader | awk -v t=$SEC '{sum+=$1+0; printf "%d\n", sum*t}'
+#nvidia-smi -lms $MSEC -q -d POWER | awk -v sec=$SEC  '/Inst/ {if(NR%35==29){s+=$5*sec;  print s}}'
 
 #- AMD smis are not great in general as lack a daemon mode.
 #-- AMD w rocm-smi, a bit faster: latency is about 0.5 sec
