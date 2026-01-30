@@ -11,15 +11,24 @@
 
 #include <iostream>
 #include <thread>
+#include <mpi.h>
 #include "p3em.hpp"
 
-int main() {
+int main(int argc, char** argv)  {
+
+    MPI_Init(&argc, &argv);
+    int world_size;  // Total number of processes
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    int rank;  // Current process ID
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
     p3em myem("../p3em.sh");
     // Simulate usage
     for (int i = 0; i < 10; ++i) {
-        std::cout << "Latest value: " << myem.getLatestValue() << std::endl;
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+        std::cout << "[Rank "<<rank<<"]Latest value: " << myem.getLatestValue() << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        MPI_Barrier(MPI_COMM_WORLD);
     }
+    MPI_Finalize();
     return 0;
 }

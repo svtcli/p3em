@@ -10,6 +10,9 @@
 #  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 #  language governing permissions and limitations under the License.
 
+
+# IN CASE OF HANGING, check: Have you turned off conda?
+
 #- Time resolution (try it)
 SEC=${1:-0.1}
 MSEC=$(echo $SEC | awk '{print $1 * 1000}')
@@ -28,14 +31,14 @@ CPN=$(lscpu | grep CPU\(s\) | awk '{sum+=$2+0}(NR==1){print sum}')
 #- hwmon + nvidia-smi; uses helper script hwmon-smi.sh
 # Grep your combinations out of it... e.g.:
 #HW_EXP=PU_Power_Average # Will do CPU (hwmon) + GPU (nvidia-smi)
-HW_EXP=nvidia-smi_Module_Power_Average # Whole module
+#HW_EXP=nvidia-smi_Module_Power_Average # Whole module
 
-HW_LINES=$(./hwmon-nvidia.sh | grep $HW_EXP | wc -l)
-while true; do ./hwmon-nvidia.sh | grep $HW_EXP; sleep $SEC; done | awk -v n=$HW_LINES '{sum+=$2+0.0}((NR%n)==(n-1)){print sum}'
+#HW_LINES=$(./hwmon-nvidia.sh | grep $HW_EXP | wc -l)
+#while true; do ./hwmon-nvidia.sh | grep $HW_EXP; sleep $SEC; done | awk -v n=$HW_LINES '{sum+=$2+0.0}((NR%n)==(n-1)){print sum}'
 
 #- Intel GPUs via xpu-smi
-#GPN=$(( 1 + $(xpu-smi discovery --dump 1 2>/dev/null | tail -n 1)))
-#unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null | awk -v gpn=$GPN '{s+=$3+0}((NR+2)%gpn)==0 {print s%1E6; s=0}'
+GPN=$(( 1 + $(xpu-smi discovery --dump 1 2>/dev/null | tail -n 1)))
+unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null | awk -v gpn=$GPN '{s+=$3+0}((NR+2)%gpn)==0 {print s%1E6; s=0}'
 
 #- Nvidia GPUs via nvidia-smi
 #nvidia-smi -lms $MSEC --query-gpu=power.draw --format=csv,nounits,noheader | awk -v t=$SEC '{sum+=$1+0; printf "%d\n", sum*t}'

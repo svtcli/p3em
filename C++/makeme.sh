@@ -11,6 +11,6 @@
 #  language governing permissions and limitations under the License.
 
 #- choose compiler
-MYCXX=icpx
+MYCXX=mpiicpx
 
 $MYCXX -o main main.cpp -pthread
