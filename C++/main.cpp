@@ -22,10 +22,10 @@ int main(int argc, char** argv)  {
     int rank;  // Current process ID
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    p3em myem("../p3em.sh");
+    p3em myem("../p3em.sh", rank);
     // Simulate usage
     for (int i = 0; i < 10; ++i) {
-        std::cout << "[Rank "<<rank<<"]Latest value: " << myem.getLatestValue() << std::endl;
+        std::cout << "[Rank "<<rank<<"] Latest value: " << myem.getLatestValue() << std::endl;
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
         MPI_Barrier(MPI_COMM_WORLD);
     }

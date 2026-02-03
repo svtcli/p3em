@@ -27,6 +27,7 @@ private:
   int pipefd[2];  // Declare as member
   FILE* stream = nullptr;  // Initialize to nullptr, set later
   char buffer[256];
+  const int shmRank;
   std::string prName;
   std::thread monitorThread;
 
@@ -57,20 +58,24 @@ private:
   }
 
 public:
-  p3em(const std::string& name) : prName(name) {
-    // Start thread after all members are initialized
-    monitorThread = std::thread(&p3em::launchScriptAndMonitor, this);
-    while(getLatestValue()<=0){ // Wait for 1st read
-     std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  p3em(const std::string& name, const int localRank=0) : prName(name),shmRank(localRank) {
+    if(!shmRank){
+      // Start thread after all members are initialized
+      monitorThread = std::thread(&p3em::launchScriptAndMonitor, this);
+      while(getLatestValue()<=0){ // Wait for 1st read
+       std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
     }
   }
   ~p3em() {
-    if (scriptPid > 0)            killpg(scriptPid, SIGKILL);
-    if (monitorThread.joinable()) monitorThread.join();
+    if(!shmRank){
+      if (scriptPid > 0)            killpg(scriptPid, SIGKILL);
+      if (monitorThread.joinable()) monitorThread.join();
+   }
   }
 
   int getLatestValue() {
-    return latestValue.load();
+    return shmRank ? 0 : latestValue.load();
   }
 };
 
