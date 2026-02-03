@@ -16,18 +16,32 @@
 
 int main(int argc, char** argv)  {
 
-    MPI_Init(&argc, &argv);
-    int world_size;  // Total number of processes
-    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-    int rank;  // Current process ID
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    int shmRank, shmSize, value;
+    MPI_Comm    shmComm;
+    MPI_Request shmReq;
+    MPI_Status  shmStatus;
 
-    p3em myem("../p3em.sh", rank);
+    MPI_Init(&argc, &argv);
+    MPI_Comm_split_type(MPI_COMM_WORLD,MPI_COMM_TYPE_SHARED,0,MPI_INFO_NULL,&shmComm);
+    MPI_Comm_rank(shmComm, &shmRank);
+    MPI_Comm_size(shmComm, &shmSize);
+
+    p3em myem("../p3em.sh", shmRank);
     // Simulate usage
     for (int i = 0; i < 10; ++i) {
-        std::cout << "[Rank "<<rank<<"] Latest value: " << myem.getLatestValue() << std::endl;
+        // This is what p3em returns
+        value = myem.getLatestValue();
+        std::cout << "[Rank "<<shmRank<<"] Latest value native: " << value << std::endl;
+        MPI_Barrier(MPI_COMM_WORLD); // only for better output, you don't want this
+
+        // You may want an average, instead
+        value = static_cast<int>(value *1.0/shmSize);
+        MPI_Ibcast(&value,1,MPI_INTEGER, 0, shmComm, &shmReq);
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
-        MPI_Barrier(MPI_COMM_WORLD);
+        MPI_Wait(&shmReq,&shmStatus); // barrier here
+        std::cout << "[Rank "<<shmRank<<"] Latest value bcast: " << value << std::endl;
+        MPI_Barrier(MPI_COMM_WORLD); // only for better output, you don't want this
+
     }
     MPI_Finalize();
     return 0;
