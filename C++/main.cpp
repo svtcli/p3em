@@ -17,29 +17,37 @@
 int main(int argc, char** argv)  {
 
     int shmRank, shmSize, value;
+    int rank, size;
     MPI_Comm    shmComm;
     MPI_Request shmReq;
     MPI_Status  shmStatus;
 
     MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_split_type(MPI_COMM_WORLD,MPI_COMM_TYPE_SHARED,0,MPI_INFO_NULL,&shmComm);
     MPI_Comm_rank(shmComm, &shmRank);
     MPI_Comm_size(shmComm, &shmSize);
 
+    std::cout << "[r "<<rank<<":"<<shmRank<<"] Before p3em "<< std::endl;
     p3em myem("../p3em.sh", shmRank);
+    std::cout << "[r "<<rank<<":"<<shmRank<<"] After p3em "<< std::endl;
+
     // Simulate usage
     for (int i = 0; i < 10; ++i) {
         // This is what p3em returns
         value = myem.getLatestValue();
-        std::cout << "[Rank "<<shmRank<<"] Latest value native: " << value << std::endl;
+        std::cout << "[r "<<rank<<":"<<shmRank<<"] Latest value native: " << value << std::endl;
         MPI_Barrier(MPI_COMM_WORLD); // only for better output, you don't want this
 
         // You may want an average, instead
         value = static_cast<int>(value *1.0/shmSize);
+
         MPI_Ibcast(&value,1,MPI_INTEGER, 0, shmComm, &shmReq);
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
         MPI_Wait(&shmReq,&shmStatus); // barrier here
-        std::cout << "[Rank "<<shmRank<<"] Latest value bcast: " << value << std::endl;
+
+        std::cout << "[r "<<rank<<":"<<shmRank<<"] Latest value bcast: " << value << std::endl;
         MPI_Barrier(MPI_COMM_WORLD); // only for better output, you don't want this
 
     }
