@@ -26,7 +26,7 @@ program main
    integer(c_int) :: val, istat
    integer :: i
 
-   istat = p3em_init(handle,"../p3em.sh"//c_null_char)
+   istat = p3em_init(handle,"../../meters/perf.sh"//c_null_char)
    do i = 1, 10
       val = p3em_getLatestValue(handle)
       print *, "Latest value:", val

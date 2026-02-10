@@ -18,7 +18,7 @@ class ScriptMonitor:
     Launches a script and monitors its output, extracting the latest integer value from each line.
     """
 
-    def __init__(self, script_path: str = "../p3em.sh"):
+    def __init__(self, script_path: str = "../../meters/p3em.sh"):
         self._script_path = script_path
         self._process: Optional[subprocess.Popen] = None
         self._latest_value: Optional[int] = None

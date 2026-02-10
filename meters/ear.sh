@@ -14,35 +14,14 @@
 # IN CASE OF HANGING, check: Have you turned off conda?
 
 #- Time resolution (try it)
-SEC=${1:-0.1}
+SEC=${1:-1.0}
 MSEC=$(echo $SEC | awk '{print $1 * 1000}')
-#- logical cores per node (for likwid)
-CPN=$(lscpu | grep CPU\(s\) | awk '{sum+=$2+0}(NR==1){print sum}')
 
-#- Debugging test, prints time in seconds
-#while true ; do date "+%s" ; sleep $SEC ; done
-
-#- CPU measuring via perf
-#unbuffer perf stat -a -e power/energy-pkg/ -I $MSEC | awk '{sum+=$2+0; print sum}' # Perhaps add  -S to perf stat?
-
-#- CPU via likwid. EXPERIMENTAL, likely perfect
-#unbuffer likwid-perfctr -g PWR_PKG_ENERGY:PWR0 -t ${MSEC}ms | awk -v cpn=$CPN '(NR>7) {for(i=5;i<5+cpn;i++) total+=$i} {print total}'
-
-#- hwmon + nvidia-smi; uses helper script hwmon-smi.sh
-# Grep your combinations out of it... e.g.:
-#HW_EXP=PU_Power_Average # Will do CPU (hwmon) + GPU (nvidia-smi)
-#HW_EXP=nvidia-smi_Module_Power_Average # Whole module
-
-#HW_LINES=$(./hwmon-nvidia.sh | grep $HW_EXP | wc -l)
-#while true; do ./hwmon-nvidia.sh | grep $HW_EXP; sleep $SEC; done | awk -v n=$HW_LINES '{sum+=$2+0.0}((NR%n)==(n-1)){print sum}'
-
-#- Intel GPUs via xpu-smi
-GPN=4 #$(( 1 + $(xpu-smi discovery --dump 1 2>/dev/null | tail -n 1)))
-unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null | awk -v gpn=$GPN '{s+=$3+0}((NR+2)%gpn)==0 {print s%1E6; s=0}'
-
-#- Nvidia GPUs via nvidia-smi
-#nvidia-smi -lms $MSEC --query-gpu=power.draw --format=csv,nounits,noheader | awk -v t=$SEC '{sum+=$1+0; printf "%d\n", sum*t}'
-#nvidia-smi -lms $MSEC -q -d POWER | awk -v sec=$SEC  '/Inst/ {if(NR%35==29){s+=$5*sec;  print s}}'
+#- BAD. FAILS at low latencies, time is not accurate. Not worth improving. 
+while true; do
+ econtrol --power=$(hostname)
+ sleep $SEC
+done | awk '{sum+=$5+0; printf "%d\n", sum}'
 
 #- AMD smis are not great in general as lack a daemon mode.
 #-- AMD w rocm-smi, a bit faster: latency is about 0.5 sec
