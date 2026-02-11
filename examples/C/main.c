@@ -17,7 +17,7 @@ p3em_t *global_monitor;
 
 int main() {
 
-  if (p3em_init(&global_monitor, "../../meters/perf.sh") != 0) {
+  if (p3em_init(&global_monitor, "../../meters/xpuSmi.sh") != 0) {
     printf("Failed to initialize p3em\n");
     return 1;
   }

@@ -14,12 +14,11 @@
 SEC=${1:-0.1}
 MSEC=$(echo $SEC | awk '{print $1 * 1000}')
 
-#- Get GPUs per node
-GPN=$(( 1 + $(xpu-smi discovery --dump 1 2>/dev/null | tail -n 1)))
+##- Get GPUs per node
+GPN=4 #$(( 1 + $(xpu-smi discovery --dump 1 2>/dev/null | tail -n 1)))
 
-#- Zero it (optional)
-Z=$(xpu-smi dump -m 8 -n 1 --file /dev/stdout 2>/dev/null | awk -v gpn=$GPN '(NR>1){sum+=$3+0}END{print sum}')
+##- Zero it (optional)
+Z=$(unbuffer xpu-smi dump -m 8 -n 1 --file /dev/stdout 2>/dev/null | awk -v gpn=$GPN '(NR>1){sum+=$3+0}END{print sum}')
 
-#- xpu-smi dump
-unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null |
- awk -v gpn=$GPN -v z=$Z '{s+=$3+0}((NR+2)%gpn)==0 {printf "%d\n", s-z; s=0}'
+unbuffer xpu-smi dump -m 8 --ims $MSEC --file /dev/stdout 2>/dev/null | \
+  awk -v gpn=$GPN -v z=$Z '{s+=$3+0}((NR+2)%gpn)==0 {printf "%d\n", s-z; s=0}'

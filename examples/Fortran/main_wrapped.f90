@@ -34,7 +34,7 @@ contains
         if (.not. c_associated(p3em%handle)) then
             block
                 integer(c_int) :: stat
-                stat = p3em_init(p3em%handle,"../../meters/perf.sh"//c_null_char)
+                stat = p3em_init(p3em%handle,"../../meters/xpuSmi.sh"//c_null_char)
                 if (stat /= 0) then
                     write(error_unit,*) "p3em_mod: Warning: p3em_t encounted an error during initialization."
                 end if
