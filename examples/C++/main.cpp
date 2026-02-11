@@ -30,15 +30,19 @@ int main(int argc, char** argv)  {
     MPI_Comm_size(shmComm, &shmSize);
 
     std::cout << "[r "<<rank<<":"<<shmRank<<"] Before p3em "<< std::endl;
-    p3em *myem = new p3em("../../meters/xpuSmi.sh", shmRank);
+    p3em *xpu = new p3em("../../meters/xpuSmi.sh", shmRank),
+         *prf = new p3em("../../meters/perf.sh"  , shmRank);
     std::cout << "[r "<<rank<<":"<<shmRank<<"] After p3em "<< std::endl;
 
     // Simulate usage
     for (int i = 0; i < 1; ++i) {
         // This is what p3em returns
-        value = myem->getLatestValue();
-        std::cout << "[r "<<rank<<":"<<shmRank<<"] Latest value native: " << value << std::endl;
-        MPI_Barrier(MPI_COMM_WORLD); // only for better output, you don't want this
+        value = xpu->getLatestValue();
+        auto tmp = prf->getLatestValue();
+
+        std::cout << "[r "<<rank<<":"<<shmRank<<"] Values native (xpu/perf): " << value <<" / " <<tmp <<std::endl;
+        value += tmp;
+//        MPI_Barrier(MPI_COMM_WORLD); // only for better output, you don't want this
 
         // You may want an average, instead
         value = static_cast<int>(value *1.0/shmSize);
@@ -52,5 +56,7 @@ int main(int argc, char** argv)  {
 
     }
     MPI_Finalize();
+    delete xpu;
+    delete prf;
     return 0;
 }
