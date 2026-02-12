@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     usleep(interval_ms * 1000);
     if (ear_energy(&e1, &t1) == EAR_SUCCESS) {
       ear_energy_diff(e0,e1,&ed,t0,t1,&td);
-      printf("%lu\n", ed);
+      printf("%lu\n", ed/1000); // Energy is in mJ
     }
   }
   return 0;

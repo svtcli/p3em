@@ -3,4 +3,4 @@
 #SBATCH -A pr28fa
 
 ./makeme.sh
-./ear
+./API
