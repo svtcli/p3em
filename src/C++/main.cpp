@@ -42,9 +42,8 @@ int main(int argc, char** argv)  {
 
         std::cout << "[r "<<rank<<":"<<shmRank<<"] Values native (xpu/perf): " << value <<" / " <<tmp <<std::endl;
         value += tmp;
-//        MPI_Barrier(MPI_COMM_WORLD); // only for better output, you don't want this
 
-        // You may want an average, instead
+        // E.g. calculate the average among node tasks
         value = static_cast<int>(value *1.0/shmSize);
 
         MPI_Ibcast(&value,1,MPI_INTEGER, 0, shmComm, &shmReq);

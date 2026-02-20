@@ -74,7 +74,7 @@ public:
    }
   }
 
-  int getLatestValue() {
+  int getLatestValue() const {
     return shmRank ? 0 : latestValue.load();
   }
 };
