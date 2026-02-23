@@ -8,7 +8,7 @@ for val in "${x[@]}"; do
 done
 
 #- Time duration
-SEC=$(cat ${MPATH}_interval | awk '{print $1/1000}')  #| awk '(NR==1){print $1/1000}'
+SEC=$(cat ${MPATH}_interval | awk '(NR==1){print $1/1000}')
 
 #- Read in loop and process with awk
 while true; do
