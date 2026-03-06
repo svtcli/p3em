@@ -11,22 +11,31 @@
 
 #include <stdio.h>
 #include <sys/wait.h>
+
 #include "p3em.h"
+#include <mpi.h>
 
 p3em_t *global_monitor;
 
 int main() {
 
-  if (p3em_init(&global_monitor, "../../meters/xpuSmi.sh") != 0) {
+  int shmRank;
+  MPI_Comm shmComm;
+  MPI_Init(NULL, NULL );
+  MPI_Comm_split_type(MPI_COMM_WORLD,MPI_COMM_TYPE_SHARED,0,MPI_INFO_NULL,&shmComm);
+  MPI_Comm_rank(shmComm, &shmRank);
+
+  if (p3em_init(&global_monitor, "../../meters/xpuSmi.sh",shmRank) != 0) {
     printf("Failed to initialize p3em\n");
     return 1;
   }
   // Simulate usage
   for (int i = 0; i < 10; ++i) {
-    printf("Latest value: %d\n", p3em_getLatestValue(global_monitor));
+    printf("[NodeRank %i] Latest value: %d\n",shmRank, p3em_getLatestValue(global_monitor));
     usleep(30000);
   }
 
   p3em_cleanup(global_monitor);
+  MPI_Finalize();
   return 0;
 }

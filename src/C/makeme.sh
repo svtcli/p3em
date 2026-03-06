@@ -11,6 +11,6 @@
 #  language governing permissions and limitations under the License.
 
 #- choose compiler
-MYCC=icx
+MYCC=mpiicx
 
 $MYCC -o main main.c -pthread

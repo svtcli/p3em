@@ -33,16 +33,17 @@ typedef struct {
   pthread_t monitorThread;
   int should_stop;  // Flag to signal thread termination
   int initialized;  // Track initialization state
+  int shmRank;
 } p3em_t;
 
 // Function declarations
-int   p3em_init(p3em_t** p3em, const char* name);
+int   p3em_init(p3em_t** p3em, const char* name, int locRank);
 void  p3em_cleanup(p3em_t* p3em);
 int   p3em_getLatestValue(p3em_t* p3em);
 void* p3em_launchScriptAndMonitor(void* arg); // Internal
 
 // Implementation
-int p3em_init(p3em_t** p3em, const char* name) {
+int p3em_init(p3em_t** p3em, const char* name, int locRank) {
   if(!name) return -1;
   // Check name length
   if (strlen(name) >= P3EM_MAX_NAME_LEN) return -1;
@@ -53,29 +54,36 @@ int p3em_init(p3em_t** p3em, const char* name) {
   temp->scriptPid = -420;
   temp->stream = NULL;
   temp->should_stop = 0;
-  temp->initialized = 0;
+  temp->initialized = 1;
+  temp->shmRank = locRank;
   strcpy(temp->prName, name);  // Copy the name
-  // Start monitoring thread
-  temp->initialized = !pthread_create(&temp->monitorThread,NULL,p3em_launchScriptAndMonitor,temp);
-  if(temp->initialized == 0) return -1;
-  // Wait for first read; small delay to prevent busy waiting
-  while(p3em_getLatestValue(temp)<=0) usleep(1000);
+  // Start monitoring thread (the non-zero rank is always ok, it'll return 0 always)
+  if(0==locRank){
+    temp->initialized = !pthread_create(&temp->monitorThread,NULL,p3em_launchScriptAndMonitor,temp);
+    if(temp->initialized == 0) return -1;
+    // Wait for first read; small delay to prevent busy waiting
+    while(p3em_getLatestValue(temp)<=0) usleep(1000);
+  }
   return 0;
 }
 
 void p3em_cleanup(p3em_t* p3em) {
-  if (!p3em || !(p3em->initialized)) return;
-  p3em->should_stop = 1;  // Signal thread to stop
-  if (p3em->scriptPid > 0) {   // Kill the script process group
-    killpg(p3em->scriptPid, SIGKILL);
-    waitpid(p3em->scriptPid, NULL, 0); // Clean up zombie process
+  if(!p3em || !(p3em->initialized)) return;
+  if(!(p3em->shmRank)){
+    p3em->should_stop = 1;  // Signal thread to stop
+    if (p3em->scriptPid > 0) {   // Kill the script process group
+      killpg(p3em->scriptPid, SIGKILL);
+      waitpid(p3em->scriptPid, NULL, 0); // Clean up zombie process
+    }
+    pthread_join(p3em->monitorThread, NULL);   // Wait for thread to finish
+    p3em->initialized = 0;
   }
-  pthread_join(p3em->monitorThread, NULL);   // Wait for thread to finish
-  p3em->initialized = 0;
   free(p3em);
+  return;
 }
 
 int p3em_getLatestValue(p3em_t* p3em) {
+  if(p3em->shmRank){ return 0 ;} // Non-0 ranks always return 0
   return p3em ? atomic_load(&p3em->latestValue) : -42;
 }
 
