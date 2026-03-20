@@ -13,5 +13,5 @@
 #- Time resolution (try it)
 SEC=${1:-0.1}
 
-#- Debugging test, prints time in seconds
-while true ; do echo "0" ; sleep $SEC ; done
+#- Debugging test, prints always 0
+while true ; do echo 0 ; sleep $SEC ; done

@@ -59,10 +59,11 @@ private:
 
 public:
   p3em(const std::string& name, const int localRank=0) : prName(name),shmRank(localRank) {
+     std::cout<<"p3em init'd"<<std::endl;
     if(!shmRank){
       // Start thread after all members are initialized
       monitorThread = std::thread(&p3em::launchScriptAndMonitor, this);
-      while(getLatestValue()<=0){ // Wait for 1st read
+      while(getLatestValue()<0){ // Wait for 1st read
        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
     }

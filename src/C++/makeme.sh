@@ -13,4 +13,7 @@
 #- choose compiler
 MYCXX=mpiicpx
 
-$MYCXX -o main main.cpp -pthread
+for i in "mainInteger" "mainChrono"
+do
+ $MYCXX -o $i.bat $i.cpp -pthread
+done
