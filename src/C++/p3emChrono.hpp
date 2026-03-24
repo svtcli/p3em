@@ -65,19 +65,20 @@ namespace p3emChrono {
           cpu.emplace(std::string(str_cpu), shmRank.value());
         }
       }
-    }
+    } // init
 
-    static std::chrono::system_clock::time_point now() {
-      if (!enabled) { return std::chrono::system_clock::now(); }
+    template<typename Clock = std::chrono::system_clock>
+    static typename Clock::time_point now() {
+      if (!enabled) return Clock::now();
 
       long long total_value = 0;
-      if (gpu.has_value()) { total_value += gpu->getLatestValue(); }
-      if (cpu.has_value()) { total_value += cpu->getLatestValue(); }
+      if (gpu.has_value()) total_value += gpu->getLatestValue();
+      if (cpu.has_value()) total_value += cpu->getLatestValue();
 
-      return std::chrono::system_clock::time_point(
+      return typename Clock::time_point(
         std::chrono::seconds(total_value)
       );
-    }
+    } // now
   };
 
 }
