@@ -13,43 +13,48 @@
 #include <thread>
 #include <mpi.h>
 #include "p3em.hpp"
+#include <iomanip>
 
-int main(int argc, char** argv)  {
+class P3emTimer {
+    double startSec;
+public:
+    P3emTimer() {
+        p3em::init();
+        startSec = p3em::now();
+    }
+    double elapsed() const { return p3em::now() - startSec; }
+};
 
+int main(int argc, char** argv) {
     int shmRank, shmSize, rank, size;
-    long long value;
-    MPI_Comm    shmComm;
+    double value;
+    MPI_Comm shmComm;
     MPI_Request shmReq;
-    MPI_Status  shmStatus;
+    MPI_Status shmStatus;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-    MPI_Comm_split_type(MPI_COMM_WORLD,MPI_COMM_TYPE_SHARED,0,MPI_INFO_NULL,&shmComm);
+    MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &shmComm);
     MPI_Comm_rank(shmComm, &shmRank);
     MPI_Comm_size(shmComm, &shmSize);
 
-    std::cout << "[r "<<rank<<":"<<shmRank<<"] Before p3em "<< std::endl;
-    p3em::init();
-    std::cout << "[r "<<rank<<":"<<shmRank<<"] After p3em "<< std::endl;
+    P3emTimer timer;
 
     // Simulate usage
-    for (int i = 0; i < 1; ++i) {
-        // This is what p3em returns
-        value = p3em::now();
-
-        std::cout << "[r "<<rank<<":"<<shmRank<<"] Values native (xpu/perf): " << value << std::endl;
-
-        // E.g. calculate the average among node tasks
-        value = static_cast<long long>(value *1.0/shmSize);
-
-        MPI_Ibcast(&value,1,MPI_LONG_LONG_INT, 0, shmComm, &shmReq);
+    for (int i = 0; i < 10; ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(230));
+        double elapsed = timer.elapsed();
+        std::cout << "[r " << rank << ":" << shmRank << "] Elapsed seconds: "
+                  << std::fixed << std::setprecision(6) << elapsed << std::endl;
+        // Average among node tasks
+        double avg = elapsed / static_cast<double>(shmSize);
+        MPI_Ibcast(&avg, 1, MPI_DOUBLE, 0, shmComm, &shmReq);
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
-        MPI_Wait(&shmReq,&shmStatus); // barrier here
-
-        std::cout << "[r "<<rank<<":"<<shmRank<<"] Latest value bcast: " << value << std::endl;
-        MPI_Barrier(MPI_COMM_WORLD); // only for better output, you don't want this
-
+        MPI_Wait(&shmReq, &shmStatus);
+        MPI_Barrier(MPI_COMM_WORLD);
+        std::cout << "[r " << rank << ":" << shmRank << "] Latest value bcast: "
+                  << std::fixed << std::setprecision(6) << avg << std::endl;
     }
     MPI_Finalize();
     return 0;

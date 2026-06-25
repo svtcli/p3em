@@ -109,10 +109,16 @@ public:
     enabled = check_enabled();
     if (enabled) {
       int rank = mpi_local_rank_on_node();
-      const char* str_gpu = std::getenv("P3EM_GPU");
-      const char* str_cpu = std::getenv("P3EM_CPU");
+       const char* str_gpu = std::getenv("P3EM_GPU");
+       const char* str_cpu = std::getenv("P3EM_CPU");
 
-      if (str_gpu) {
+       // Abort if enabled but no device specified
+       if (!str_cpu && !str_gpu) {
+           std::cerr << "[p3em] ERROR: P3EM_ENABLED set but neither P3EM_CPU nor P3EM_GPU defined." << std::endl;
+           std::exit(EXIT_FAILURE);
+       }
+
+       if (str_gpu) {
         std::cerr << "[p3em] GPU monitoring enabled: " << str_gpu << std::endl;
         gpuReader.emplace(std::string(str_gpu), rank);
       }
@@ -124,16 +130,17 @@ public:
     }
   }
 
-  static long long now() {
+template<class T = double>
+static T now() {
     if (!enabled) {
-      struct timeval tv;
-      gettimeofday(&tv, nullptr);
-      return static_cast<long long>(tv.tv_sec);
+        struct timeval tv;
+        gettimeofday(&tv, nullptr);
+        return static_cast<T>(tv.tv_sec) + static_cast<T>(tv.tv_usec) / static_cast<T>(1e6);
     }
 
-    long long total = 0;
-    if (cpuReader.has_value()) total += cpuReader->getLatestValue();
-    if (gpuReader.has_value()) total += gpuReader->getLatestValue();
+    T total = T(0);
+    if (cpuReader.has_value()) total += static_cast<T>(cpuReader->getLatestValue());
+    if (gpuReader.has_value()) total += static_cast<T>(gpuReader->getLatestValue());
     return total;
   }
 };
@@ -149,9 +156,9 @@ namespace p3emChrono {
     template<typename Clock = std::chrono::system_clock>
     static typename Clock::time_point now() {
       if (!p3em::enabled) return Clock::now();
-      return typename Clock::time_point(
-        std::chrono::seconds(p3em::now())
-      );
+        return typename Clock::time_point(
+          std::chrono::duration_cast<typename Clock::duration>(std::chrono::duration<double>(p3em::now()))
+        );
     }
   };
 }
