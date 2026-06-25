@@ -16,8 +16,8 @@
 
 int main(int argc, char** argv)  {
 
-    int shmRank, shmSize, value;
-    int rank, size;
+    int shmRank, shmSize, rank, size;
+    long long value;
     MPI_Comm    shmComm;
     MPI_Request shmReq;
     MPI_Status  shmStatus;
@@ -30,23 +30,20 @@ int main(int argc, char** argv)  {
     MPI_Comm_size(shmComm, &shmSize);
 
     std::cout << "[r "<<rank<<":"<<shmRank<<"] Before p3em "<< std::endl;
-    p3em *xpu = new p3em("../../meters/zeros.sh", shmRank),
-         *prf = new p3em("../../meters/zeros.sh"  , shmRank);
+    p3em::init();
     std::cout << "[r "<<rank<<":"<<shmRank<<"] After p3em "<< std::endl;
 
     // Simulate usage
     for (int i = 0; i < 1; ++i) {
         // This is what p3em returns
-        value = xpu->getLatestValue();
-        auto tmp = prf->getLatestValue();
+        value = p3em::now();
 
-        std::cout << "[r "<<rank<<":"<<shmRank<<"] Values native (xpu/perf): " << value <<" / " <<tmp <<std::endl;
-        value += tmp;
+        std::cout << "[r "<<rank<<":"<<shmRank<<"] Values native (xpu/perf): " << value << std::endl;
 
         // E.g. calculate the average among node tasks
-        value = static_cast<int>(value *1.0/shmSize);
+        value = static_cast<long long>(value *1.0/shmSize);
 
-        MPI_Ibcast(&value,1,MPI_INTEGER, 0, shmComm, &shmReq);
+        MPI_Ibcast(&value,1,MPI_LONG_LONG_INT, 0, shmComm, &shmReq);
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
         MPI_Wait(&shmReq,&shmStatus); // barrier here
 
@@ -55,7 +52,5 @@ int main(int argc, char** argv)  {
 
     }
     MPI_Finalize();
-    delete xpu;
-    delete prf;
     return 0;
 }

@@ -9,23 +9,27 @@
 //  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 //  language governing permissions and limitations under the License.
 
-#ifndef P3EM_H  // Use uppercase and _H suffix
+#ifndef P3EM_H
 #define P3EM_H
-#include <iostream>
-#include <thread>
 #include <atomic>
+#include <chrono>
+#include <cstdlib>
+#include <iostream>
+#include <optional>
+#include <signal.h>
 #include <sstream>
 #include <string>
-#include <vector>
+#include <sys/time.h>
+#include <thread>
 #include <unistd.h>
-#include <signal.h>
+#include <vector>
 
 class p3em {
 private:
   std::atomic<int> latestValue{-42};
   pid_t scriptPid = -420;
-  int pipefd[2];  // Declare as member
-  FILE* stream = nullptr;  // Initialize to nullptr, set later
+  int pipefd[2];
+  FILE* stream = nullptr;
   char buffer[256];
   const int shmRank;
   std::string prName;
@@ -34,22 +38,21 @@ private:
   void launchScriptAndMonitor() {
     pipe(pipefd);
     scriptPid = fork();
-    if (scriptPid == 0) {    // Child process
-      setpgid(0, 0); // Create new process group
+    if (scriptPid == 0) {
+      setpgid(0, 0);
       dup2(pipefd[1], STDOUT_FILENO);
       close(pipefd[0]);
       close(pipefd[1]);
-      execlp("stdbuf", "stdbuf", "-oL", "-eL", prName.c_str(), nullptr);  // Use prName.c_str()
-      exit(1); // If exec fails
+      execlp("stdbuf", "stdbuf", "-oL", "-eL", prName.c_str(), nullptr);
+      exit(1);
     }
-    // Parent process: read from pipe
     close(pipefd[1]);
-    stream = fdopen(pipefd[0], "r");  // Initialize stream here
+    stream = fdopen(pipefd[0], "r");
 
     while (fgets(buffer, sizeof(buffer), stream)) {
       std::istringstream iss(buffer);
       std::string word;
-      while (iss >> word); // get last word
+      while (iss >> word);
       try {
           latestValue = std::stoi(word);
       } catch (...) {}
@@ -57,19 +60,42 @@ private:
     if (stream) fclose(stream);
   }
 
+  static int mpi_local_rank_on_node() {
+    for (const char* env_var : {
+      "OMPI_COMM_WORLD_LOCAL_RANK",
+      "MV2_COMM_WORLD_LOCAL_RANK",
+      "MPI_LOCALRANKID",
+      "SLURM_LOCALID",
+      "PMI_LOCAL_RANK",
+    }) {
+      const char* str = std::getenv(env_var);
+      if (str) { return std::stoi(str); }
+    }
+    return 0;
+  }
+
+  static bool check_enabled() {
+    const char *str = std::getenv("P3EM_ENABLED");
+    return str && std::string(str) == "1";
+  }
+
 public:
-  p3em(const std::string& name, const int localRank=0) : prName(name),shmRank(localRank) {
-     std::cout<<"p3em init'd"<<std::endl;
-    if(!shmRank){
-      // Start thread after all members are initialized
+  static inline bool enabled = false;
+  static std::optional<p3em> cpuReader;
+  static std::optional<p3em> gpuReader;
+
+  p3em(const std::string& name, const int localRank=0) : prName(name), shmRank(localRank) {
+     std::cout << "p3em init'd" << std::endl;
+    if (!shmRank) {
       monitorThread = std::thread(&p3em::launchScriptAndMonitor, this);
-      while(getLatestValue()<0){ // Wait for 1st read
+      while (getLatestValue() < 0) {
        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
     }
   }
+
   ~p3em() {
-    if(!shmRank){
+    if (!shmRank) {
       if (scriptPid > 0)            killpg(scriptPid, SIGKILL);
       if (monitorThread.joinable()) monitorThread.join();
    }
@@ -78,6 +104,56 @@ public:
   int getLatestValue() const {
     return shmRank ? 0 : latestValue.load();
   }
+
+  static void init() {
+    enabled = check_enabled();
+    if (enabled) {
+      int rank = mpi_local_rank_on_node();
+      const char* str_gpu = std::getenv("P3EM_GPU");
+      const char* str_cpu = std::getenv("P3EM_CPU");
+
+      if (str_gpu) {
+        std::cerr << "[p3em] GPU monitoring enabled: " << str_gpu << std::endl;
+        gpuReader.emplace(std::string(str_gpu), rank);
+      }
+
+      if (str_cpu) {
+        std::cerr << "[p3em] CPU monitoring enabled: " << str_cpu << std::endl;
+        cpuReader.emplace(std::string(str_cpu), rank);
+      }
+    }
+  }
+
+  static long long now() {
+    if (!enabled) {
+      struct timeval tv;
+      gettimeofday(&tv, nullptr);
+      return static_cast<long long>(tv.tv_sec);
+    }
+
+    long long total = 0;
+    if (cpuReader.has_value()) total += cpuReader->getLatestValue();
+    if (gpuReader.has_value()) total += gpuReader->getLatestValue();
+    return total;
+  }
 };
+
+inline std::optional<p3em> p3em::cpuReader;
+inline std::optional<p3em> p3em::gpuReader;
+
+namespace p3emChrono {
+  class system_clock {
+  public:
+    static void init() { p3em::init(); }
+
+    template<typename Clock = std::chrono::system_clock>
+    static typename Clock::time_point now() {
+      if (!p3em::enabled) return Clock::now();
+      return typename Clock::time_point(
+        std::chrono::seconds(p3em::now())
+      );
+    }
+  };
+}
 
 #endif
