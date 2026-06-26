@@ -17,6 +17,5 @@ MYFC=ifx
 #- Wrapper of C example interface
 $MYCC -c p3em.c -I ../C
 
-#- Compiling
-$MYFC -pthread main_capi.f90    -o main_capi    p3em.o
-$MYFC -pthread main_wrapped.f90 -o main_wrapped p3em.o
+#- Compiling test executable
+$MYFC -pthread test_capi.f90 -o test_capi p3em.o

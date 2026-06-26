@@ -24,14 +24,22 @@ program main
 
    type(c_ptr) :: handle
    integer(c_int) :: val, istat
-   integer :: i
+    integer :: i
+    integer(c_int) :: x0, elapsed
+    logical :: first = .true.
 
-   istat = p3em_init(handle,"../../meters/xpuSmi.sh"//c_null_char)
-   do i = 1, 10
-      val = p3em_getLatestValue(handle)
-      print *, "Latest value:", val
-      call usleep(30000)  ! 30 ms
-   end do
+
+     istat = p3em_init(handle)
+     do i = 1, 5
+        val = p3em_getLatestValue(handle)
+        if (first) then
+           x0 = val
+           first = .false.
+        end if
+        elapsed = val - x0
+        print *, "Latest value:", val, ", elapsed:", elapsed
+        call usleep(1100000)  ! 1100 ms
+     end do
 
    call p3em_cleanup(handle)
 

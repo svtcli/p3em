@@ -14,4 +14,4 @@
 SEC=${1:-0.1}
 
 #- Debugging test, prints time in seconds
-while true ; do date "+%s" ; sleep $SEC ; done
+while true ; do date "+%s.%N" ; sleep $SEC ; done
