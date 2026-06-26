@@ -27,11 +27,16 @@ A likely workflow:
 - run your code without any change
 - process the performance measures with your usual pipeline.
 
+## Environment variables
+
+- `P3EM_ENABLED=1` activates monitoring; otherwise the API returns wall‑clock seconds.
+- `P3EM_CPU` and/or `P3EM_GPU` point to up‑to‑two custom meter scripts (you may set one, the other, or both). Use the CPU script for CPU‑related meters and the GPU script for GPU‑related meters, or any combination you prefer.
+
+> **Tip:** For simple timing, reuse your existing code’s built‑in timer instead of the mock `my_timer`.
+
 For further examples you may look at the [timer linked above](https://github.com/svtcli/tmr/).
 
-Not what you are looking for right now? Read below to understand and customize `p3em`'s behaviour.
-
-## Meaning
+Not what you are looking...
 - `p3em.sh` parses the sample energy meters to yield a running total of consumed energy.
 - The measure is intended at node level (i.e. it yields the sum over all selected devices in a node); node fractions are no fun.
 - The provided energy meters aim only at the _device cores_ , as a proxy of _device size_
