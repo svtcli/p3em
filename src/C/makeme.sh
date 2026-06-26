@@ -10,7 +10,5 @@
 #  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 #  language governing permissions and limitations under the License.
 
-#- choose compiler
-MYCC=mpiicx
-
-$MYCC -o main main.c -pthread
+CC=${CC:-mpicc}
+$CC -Wall -Wextra -Wno-unused-function -I . -pthread test.c my_timer.c -o test

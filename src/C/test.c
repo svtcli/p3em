@@ -10,32 +10,40 @@
 //  language governing permissions and limitations under the License.
 
 #include <stdio.h>
-#include <sys/wait.h>
-
-#include "p3em.h"
+#include <stdlib.h>
+//#include "p3em.h"
 #include <mpi.h>
 
-p3em_t *global_monitor;
+#include "my_timer.h"
 
-int main() {
 
-  int shmRank;
+int main(int argc, char* argv[]) {
+  int shmRank, shmSize;
+  double elapsed;
   MPI_Comm shmComm;
-  MPI_Init(NULL, NULL );
+  MPI_Request shmReq;
+  MPI_Status shmStatus;
+
+  MPI_Init(&argc, &argv);
   MPI_Comm_split_type(MPI_COMM_WORLD,MPI_COMM_TYPE_SHARED,0,MPI_INFO_NULL,&shmComm);
   MPI_Comm_rank(shmComm, &shmRank);
+  MPI_Comm_size(shmComm, &shmSize);
 
-  if (p3em_init(&global_monitor, "../../meters/xpuSmi.sh",shmRank) != 0) {
-    printf("Failed to initialize p3em\n");
-    return 1;
-  }
-  // Simulate usage
+  my_timer timer; my_timer_init(&timer);
+
+  my_timer_start(&timer);
   for (int i = 0; i < 10; ++i) {
-    printf("[NodeRank %i] Latest value: %d\n",shmRank, p3em_getLatestValue(global_monitor));
-    usleep(30000);
+    usleep(300000);
+    elapsed = my_timer_elapsed(&timer);
+    double avg = elapsed / (double)shmSize;
+    MPI_Ibcast(&avg, 1, MPI_DOUBLE, 0, shmComm, &shmReq);
+    MPI_Wait(&shmReq, &shmStatus);
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("[NodeRank %i] Elapsed: %f\n", shmRank, elapsed);
+    printf("[NodeRank %i] Latest value bcast: %f\n", shmRank, avg);
   }
 
-  p3em_cleanup(global_monitor);
+  my_timer_cleanup(&timer);
   MPI_Finalize();
   return 0;
 }
