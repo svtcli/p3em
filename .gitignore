@@ -1,0 +1,6 @@
+__pycache__/
+*.o
+*.bat
+src/C/test
+src/Fortran/test_capi
+meters/ear/API

@@ -11,6 +11,9 @@
 #  language governing permissions and limitations under the License.
 
 #- choose compiler
-MYCXX=icpx
+MYCXX=mpiicpx
 
-$MYCXX -o main main.cpp -pthread
+for i in "testDouble" "testChrono"
+do
+ $MYCXX -o $i.bat $i.cpp -pthread
+done

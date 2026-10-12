@@ -10,10 +10,9 @@
 !  language governing permissions and limitations under the License.
 
 interface
-    function p3em_init(p3em,name) bind(c)
+    function p3em_init(p3em) bind(c)
         use, intrinsic :: iso_c_binding
         type(c_ptr) :: p3em
-        character(len=1,kind=c_char) :: name(*)
         integer(c_int) :: p3em_init
     end function
     subroutine p3em_cleanup(p3em) bind(c)
