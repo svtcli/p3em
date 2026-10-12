@@ -9,9 +9,44 @@
 #include <stdatomic.h>
 #include <sys/time.h>
 
+static void p3em_reader_stop(p3em_reader_t *r);
+
+static int p3em_reader_start(p3em_reader_t *r, const char *path) {
+    atomic_init(&r->latestValue, -42.0);
+    r->scriptPid = -420;
+    r->stream = NULL;
+    r->should_stop = 0;
+    atomic_init(&r->done, 0);
+    snprintf(r->prName, sizeof(r->prName), "%s", path);
+    r->initialized = !pthread_create(&r->monitorThread, NULL, p3em_launchScriptAndMonitor, r);
+    if (!r->initialized) return -1;
+    while (atomic_load(&r->latestValue) < 0) {
+        if (atomic_load(&r->done)) {
+            fprintf(stderr, "[p3em] ERROR: meter script exited before producing a value: %s\n", path);
+            p3em_reader_stop(r);
+            return -1;
+        }
+        usleep(1000);
+    }
+    return 0;
+}
+
+static void p3em_reader_stop(p3em_reader_t *r) {
+    if (!r->initialized) return;
+    r->should_stop = 1;
+    if (r->scriptPid > 0) {
+        killpg(r->scriptPid, SIGKILL);
+        waitpid(r->scriptPid, NULL, 0);
+    }
+    pthread_join(r->monitorThread, NULL);
+    r->initialized = 0;
+}
+
 static int p3em_init_impl(p3em_t *ctx) {
     const char *en = getenv("P3EM_ENABLED");
     ctx->enabled = en && strcmp(en, "1") == 0;
+    ctx->cpu.initialized = 0;
+    ctx->gpu.initialized = 0;
     if (!ctx->enabled) return 0;
     ctx->cpu_path = getenv("P3EM_CPU");
     ctx->gpu_path = getenv("P3EM_GPU");
@@ -19,62 +54,60 @@ static int p3em_init_impl(p3em_t *ctx) {
         fprintf(stderr, "[p3em] ERROR: P3EM_ENABLED set but neither P3EM_CPU nor P3EM_GPU defined.\n");
         exit(EXIT_FAILURE);
     }
-    const char *path = ctx->cpu_path ? ctx->cpu_path : ctx->gpu_path;
-    atomic_init(&ctx->latestValue, -42.0);
-    ctx->scriptPid = -420;
-    ctx->stream = NULL;
-    ctx->should_stop = 0;
-    ctx->initialized = 1;
     ctx->shmRank = p3em_get_local_rank();
-    strcpy(ctx->prName, path);
-    if (ctx->shmRank == 0) {
-        ctx->initialized = !pthread_create(&ctx->monitorThread, NULL, p3em_launchScriptAndMonitor, ctx);
-        if (!ctx->initialized) return -1;
-        while (p3em_getLatestValue_internal(ctx) <= 0) usleep(1000);
+    if (ctx->shmRank) return 0;
+    if (ctx->gpu_path) {
+        fprintf(stderr, "[p3em] GPU monitoring enabled: %s\n", ctx->gpu_path);
+        if (p3em_reader_start(&ctx->gpu, ctx->gpu_path) != 0) return -1;
+    }
+    if (ctx->cpu_path) {
+        fprintf(stderr, "[p3em] CPU monitoring enabled: %s\n", ctx->cpu_path);
+        if (p3em_reader_start(&ctx->cpu, ctx->cpu_path) != 0) {
+            p3em_reader_stop(&ctx->gpu);
+            return -1;
+        }
     }
     return 0;
 }
 
 static void p3em_cleanup_impl(p3em_t *ctx) {
-    if (ctx->initialized && ctx->shmRank == 0) {
-        ctx->should_stop = 1;
-        if (ctx->scriptPid > 0) {
-            killpg(ctx->scriptPid, SIGKILL);
-            waitpid(ctx->scriptPid, NULL, 0);
-        }
-        pthread_join(ctx->monitorThread, NULL);
-        ctx->initialized = 0;
-    }
+    p3em_reader_stop(&ctx->cpu);
+    p3em_reader_stop(&ctx->gpu);
 }
 
 double p3em_getLatestValue_internal(p3em_t *p3em) {
+    if (!p3em) return -42.0;
     if (p3em->shmRank) return 0.0;
-    return p3em ? atomic_load(&p3em->latestValue) : -42.0;
+    double total = 0.0;
+    if (p3em->cpu.initialized) total += atomic_load(&p3em->cpu.latestValue);
+    if (p3em->gpu.initialized) total += atomic_load(&p3em->gpu.latestValue);
+    return total;
 }
 
 void* p3em_launchScriptAndMonitor(void* arg) {
-    p3em_t* p3em = (p3em_t*)arg;
-    if (pipe(p3em->pipefd) == -1) return NULL;
-    p3em->scriptPid = fork();
-    if (p3em->scriptPid == 0) {
+    p3em_reader_t* r = (p3em_reader_t*)arg;
+    if (pipe(r->pipefd) == -1) { atomic_store(&r->done, 1); return NULL; }
+    r->scriptPid = fork();
+    if (r->scriptPid == 0) {
         setpgid(0, 0);
-        dup2(p3em->pipefd[1], STDOUT_FILENO);
-        close(p3em->pipefd[0]);
-        close(p3em->pipefd[1]);
-        execlp("stdbuf", "stdbuf", "-oL", "-eL", p3em->prName, NULL);
+        dup2(r->pipefd[1], STDOUT_FILENO);
+        close(r->pipefd[0]);
+        close(r->pipefd[1]);
+        execlp("stdbuf", "stdbuf", "-oL", "-eL", r->prName, NULL);
         exit(1);
     }
-    close(p3em->pipefd[1]);
-    p3em->stream = fdopen(p3em->pipefd[0], "r");
-    if (!p3em->stream) return NULL;
-    while (!p3em->should_stop && fgets(p3em->buffer, sizeof(p3em->buffer), p3em->stream)) {
+    close(r->pipefd[1]);
+    r->stream = fdopen(r->pipefd[0], "r");
+    if (!r->stream) { atomic_store(&r->done, 1); return NULL; }
+    while (!r->should_stop && fgets(r->buffer, sizeof(r->buffer), r->stream)) {
         double value;
-        if (sscanf(p3em->buffer, "%lf", &value) == 1) atomic_store(&p3em->latestValue, value);
+        if (sscanf(r->buffer, "%lf", &value) == 1) atomic_store(&r->latestValue, value);
     }
-    if (p3em->stream) {
-        fclose(p3em->stream);
-        p3em->stream = NULL;
+    if (r->stream) {
+        fclose(r->stream);
+        r->stream = NULL;
     }
+    atomic_store(&r->done, 1);
     return NULL;
 }
 

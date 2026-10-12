@@ -11,4 +11,4 @@
 #  language governing permissions and limitations under the License.
 
 CC=${CC:-mpicc}
-$CC -Wall -Wextra -Wno-unused-function -I . -pthread test.c my_timer.c -o test
+$CC -Wall -Wextra -Wno-unused-function -I . -pthread test.c my_timer.c p3em_impl.c -o test

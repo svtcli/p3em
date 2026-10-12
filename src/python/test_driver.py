@@ -10,20 +10,27 @@
 #  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 #  language governing permissions and limitations under the License.
 
+# Run e.g. as:  P3EM_ENABLED=1 P3EM_CPU=../../meters/perf.sh ./test_driver.py
+
 import time
-from p3em import ScriptMonitor
+import p3em
+
+
+class P3emTimer:
+    def __init__(self):
+        p3em.init()
+        self.start = p3em.now()  # was: time.time()
+
+    def elapsed(self) -> float:
+        return p3em.now() - self.start
+
 
 def main():
-    monitor = ScriptMonitor("../../meters/perf.sh")
-    monitor.launch_and_monitor()
-    time.sleep(10)
-    try:
-        for i in range(10):
-            value = monitor.get_latest_value()
-            print(f"Latest value: {value}")
-            time.sleep(0.03)
-    finally:
-        monitor.stop()
+    timer = P3emTimer()
+    for i in range(10):
+        time.sleep(0.23)
+        print("Elapsed: {:.6f}".format(timer.elapsed()))
+
 
 if __name__ == "__main__":
     main()

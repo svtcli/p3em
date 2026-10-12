@@ -27,6 +27,7 @@
 class p3em {
 private:
   std::atomic<int> latestValue{-42};
+  std::atomic<bool> done{false};  // set when the script's output ends
   pid_t scriptPid = -420;
   int pipefd[2];
   FILE* stream = nullptr;
@@ -58,6 +59,7 @@ private:
       } catch (...) {}
     }
     if (stream) fclose(stream);
+    done = true;
   }
 
   static int mpi_local_rank_on_node() {
@@ -85,10 +87,14 @@ public:
   static std::optional<p3em> gpuReader;
 
   p3em(const std::string& name, const int localRank=0) : prName(name), shmRank(localRank) {
-     std::cout << "p3em init'd" << std::endl;
     if (!shmRank) {
       monitorThread = std::thread(&p3em::launchScriptAndMonitor, this);
       while (getLatestValue() < 0) {
+        if (done) {
+          monitorThread.join();
+          std::cerr << "[p3em] ERROR: meter script exited before producing a value: " << prName << std::endl;
+          std::exit(EXIT_FAILURE);
+        }
        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
     }

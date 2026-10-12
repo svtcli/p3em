@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
   MPI_Comm_rank(shmComm, &shmRank);
   MPI_Comm_size(shmComm, &shmSize);
 
-  my_timer timer; my_timer_init(&timer);
+  my_timer timer = {0}; my_timer_init(&timer);
 
   my_timer_start(&timer);
   for (int i = 0; i < 10; ++i) {

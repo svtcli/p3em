@@ -17,10 +17,8 @@ int p3em_init(void **handle, const char *script) {
     p3em_t *ctx = malloc(sizeof(p3em_t));
     if (!ctx) return -1;
     // Let the regular C init logic handle env‑vars and script selection
-    if (p3em_init_ctx(ctx) != 0) {
-        free(ctx);
-        return -1;
-    }
+    // Fail like the other interfaces (error already printed), rather than leave callers with a bad handle
+    if (p3em_init_ctx(ctx) != 0) exit(EXIT_FAILURE);
     *handle = ctx;
     return 0;
 }

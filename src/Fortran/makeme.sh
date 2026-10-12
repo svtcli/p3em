@@ -15,7 +15,7 @@ MYCC=icx
 MYFC=ifx
 
 #- Wrapper of C example interface
-$MYCC -c p3em.c -I ../C
+$MYCC -c p3em.c ../C/p3em_impl.c ../C/p3em_capi.c -I ../C
 
 #- Compiling test executable
-$MYFC -pthread test_capi.f90 -o test_capi p3em.o
+$MYFC -pthread test_capi.f90 -o test_capi p3em.o p3em_impl.o p3em_capi.o

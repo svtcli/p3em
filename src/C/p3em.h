@@ -23,6 +23,7 @@ static inline int p3em_get_local_rank(void) {
     return 0;
 }
 
+// One monitored meter script
 typedef struct {
   _Atomic double latestValue;
   pid_t scriptPid;
@@ -32,11 +33,17 @@ typedef struct {
   char prName[P3EM_MAX_NAME_LEN];
   pthread_t monitorThread;
   int should_stop;
+  _Atomic int done;  // set when the script's output ends
   int initialized;
+} p3em_reader_t;
+
+typedef struct {
   int shmRank;
   int enabled;
   const char *cpu_path;
   const char *gpu_path;
+  p3em_reader_t cpu;
+  p3em_reader_t gpu;
 } p3em_t;
 
 // API prototypes
@@ -44,7 +51,7 @@ int p3em_init_ctx(p3em_t *ctx);
 void p3em_cleanup_ctx(p3em_t *ctx);
 double p3em_getLatestValue_internal(p3em_t *p3em);
 int p3em_getLatestValue(void *handle);
-void* p3em_launchScriptAndMonitor(void* arg);
+void* p3em_launchScriptAndMonitor(void* arg); // arg: p3em_reader_t*
 static inline double p3em_now(const p3em_t *ctx) {
     if (!ctx->enabled) {
         struct timeval tv;
