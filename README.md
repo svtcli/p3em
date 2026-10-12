@@ -32,7 +32,20 @@ A likely workflow:
 - `P3EM_ENABLED=1` activates monitoring; otherwise the API returns wall‑clock seconds.
 - `P3EM_CPU` and/or `P3EM_GPU` point to up‑to‑two custom meter scripts (you may set one, the other, or both). Use the CPU script for CPU‑related meters and the GPU script for GPU‑related meters, or any combination you prefer.
 
-The same variables drive all interfaces (C, C++, Fortran, Python). In Python, call `p3em.init()` once and use `p3em.now()` in place of `time.time()` (see `src/python/test_driver.py`).
+The same variables drive all interfaces (C, C++, Fortran, Python), so instrumenting a timer is a one‑line change.
+In Python, for instance:
+
+```python
+import p3em
+
+p3em.init()            # reads P3EM_ENABLED / P3EM_CPU / P3EM_GPU; further calls are no-ops
+start = p3em.now()     # instead of time.time()
+...
+print("elapsed:", p3em.now() - start)   # energy when enabled, seconds otherwise
+```
+
+Run the bundled example from the repository root with, e.g.
+`P3EM_ENABLED=1 P3EM_CPU=meters/simple_counter.sh python3 src/python/test_driver.py`.
 
 > **Tip:** For simple timing, reuse your existing code’s built‑in timer instead of the mock `my_timer`.
 

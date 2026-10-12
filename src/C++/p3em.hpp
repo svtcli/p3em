@@ -111,7 +111,11 @@ public:
     return shmRank ? 0 : latestValue.load();
   }
 
+  // Starts the meters once; further calls are no-ops, so several timers share the same readings
   static void init() {
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
     enabled = check_enabled();
     if (enabled) {
       int rank = mpi_local_rank_on_node();

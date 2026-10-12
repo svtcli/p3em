@@ -20,6 +20,7 @@ Usage:
     import p3em
     p3em.init()
     t0 = p3em.now()   # energy if enabled, seconds otherwise
+    p3em.cleanup()    # optional, also runs at exit
 """
 
 import atexit
@@ -40,7 +41,10 @@ def _mpi_local_rank_on_node() -> int:
                     "PMI_LOCAL_RANK"):
         value = os.environ.get(env_var)
         if value is not None:
-            return int(value)
+            try:
+                return int(value)
+            except ValueError:
+                return 0
     return 0
 
 
@@ -104,13 +108,17 @@ class ScriptMonitor:
 
 
 enabled = False
+_initialized = False
 cpu_reader = None  # type: Optional[ScriptMonitor]
 gpu_reader = None  # type: Optional[ScriptMonitor]
 
 
 def init():
-    global enabled, cpu_reader, gpu_reader
-    stop()
+    """Start the meters once; further calls are no-ops, so several timers share the same readings."""
+    global enabled, cpu_reader, gpu_reader, _initialized
+    if _initialized:
+        return
+    _initialized = True
     enabled = _check_enabled()
     if not enabled:
         return
@@ -141,12 +149,13 @@ def now() -> float:
     return total
 
 
-def stop():
-    global cpu_reader, gpu_reader
+def cleanup():
+    global cpu_reader, gpu_reader, _initialized
     for reader in (cpu_reader, gpu_reader):
         if reader is not None:
             reader.stop()
     cpu_reader = gpu_reader = None
+    _initialized = False
 
 
-atexit.register(stop)
+atexit.register(cleanup)
