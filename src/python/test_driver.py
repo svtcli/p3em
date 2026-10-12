@@ -10,20 +10,30 @@
 #  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific
 #  language governing permissions and limitations under the License.
 
+"""Example driver, mirroring the C/C++ examples.
+
+Control it exclusively through the environment, e.g.::
+
+    P3EM_ENABLED=1 P3EM_CPU=../../meters/simple_counter.sh ./test_driver.py
+
+With ``P3EM_ENABLED`` unset (or not ``1``) the timer returns wall-clock
+seconds and the program runs without any meter.
+"""
+
 import time
-from p3em import ScriptMonitor
+
+import p3em
+
 
 def main():
-    monitor = ScriptMonitor("../../meters/perf.sh")
-    monitor.launch_and_monitor()
-    time.sleep(10)
+    timer = p3em.Timer()
     try:
-        for i in range(10):
-            value = monitor.get_latest_value()
-            print(f"Latest value: {value}")
-            time.sleep(0.03)
+        for _ in range(10):
+            time.sleep(0.23)
+            print(f"Elapsed seconds: {timer.elapsed():.6f}")
     finally:
-        monitor.stop()
+        p3em.cleanup()
+
 
 if __name__ == "__main__":
     main()

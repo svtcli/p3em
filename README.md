@@ -34,6 +34,25 @@ A likely workflow:
 
 > **Tip:** For simple timing, reuse your existing code’s built‑in timer instead of the mock `my_timer`.
 
+The Python interface under `src/python/` follows the same convention: it is driven
+only by the environment variables above, so instrumenting a timer is a one‑line
+change.
+
+```python
+import p3em
+
+timer = p3em.Timer()        # reads P3EM_ENABLED / P3EM_CPU / P3EM_GPU
+try:
+    ...
+    print("elapsed:", timer.elapsed())   # energy when enabled, seconds otherwise
+finally:
+    p3em.cleanup()
+```
+
+Run the bundled example with, e.g.
+`P3EM_ENABLED=1 P3EM_CPU=meters/simple_counter.sh python3 src/python/test_driver.py`
+(from the repository root).
+
 For further examples you may look at the [timer linked above](https://github.com/svtcli/tmr/).
 
 Not what you are looking...
