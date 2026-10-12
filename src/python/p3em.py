@@ -48,10 +48,6 @@ def _mpi_local_rank_on_node() -> int:
     return 0
 
 
-def _check_enabled() -> bool:
-    return os.environ.get("P3EM_ENABLED") == "1"
-
-
 class ScriptMonitor:
     """
     Launches a meter script and keeps the last number printed on its latest output line.
@@ -119,7 +115,7 @@ def init():
     if _initialized:
         return
     _initialized = True
-    enabled = _check_enabled()
+    enabled = os.environ.get("P3EM_ENABLED") == "1"
     if not enabled:
         return
     rank = _mpi_local_rank_on_node()

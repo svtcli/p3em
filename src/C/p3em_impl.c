@@ -7,9 +7,9 @@
 #include <pthread.h>
 #include <sys/wait.h>
 #include <stdatomic.h>
-#include <sys/time.h>
 
 static void p3em_reader_stop(p3em_reader_t *r);
+static void* p3em_launchScriptAndMonitor(void* arg);
 
 static int p3em_reader_start(p3em_reader_t *r, const char *path) {
     atomic_init(&r->latestValue, -42.0);
@@ -84,7 +84,7 @@ double p3em_getLatestValue_internal(p3em_t *p3em) {
     return total;
 }
 
-void* p3em_launchScriptAndMonitor(void* arg) {
+static void* p3em_launchScriptAndMonitor(void* arg) {
     p3em_reader_t* r = (p3em_reader_t*)arg;
     if (pipe(r->pipefd) == -1) { atomic_store(&r->done, 1); return NULL; }
     r->scriptPid = fork();

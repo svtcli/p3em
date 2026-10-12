@@ -4,12 +4,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <signal.h>
 #include <pthread.h>
-#include <sys/wait.h>
 #include <stdatomic.h>
+#include <sys/types.h>
 #include <sys/time.h>
 
 #define P3EM_MAX_NAME_LEN 256
@@ -51,7 +48,6 @@ int p3em_init_ctx(p3em_t *ctx);
 void p3em_cleanup_ctx(p3em_t *ctx);
 double p3em_getLatestValue_internal(p3em_t *p3em);
 int p3em_getLatestValue(void *handle);
-void* p3em_launchScriptAndMonitor(void* arg); // arg: p3em_reader_t*
 static inline double p3em_now(const p3em_t *ctx) {
     if (!ctx->enabled) {
         struct timeval tv;

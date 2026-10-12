@@ -19,10 +19,8 @@
 #include <signal.h>
 #include <sstream>
 #include <string>
-#include <sys/time.h>
 #include <thread>
 #include <unistd.h>
-#include <vector>
 
 class p3em {
 private:
@@ -142,11 +140,7 @@ public:
 
 template<class T = double>
 static T now() {
-    if (!enabled) {
-        struct timeval tv;
-        gettimeofday(&tv, nullptr);
-        return static_cast<T>(tv.tv_sec) + static_cast<T>(tv.tv_usec) / static_cast<T>(1e6);
-    }
+    if (!enabled) return std::chrono::duration_cast<std::chrono::duration<T>>(std::chrono::system_clock::now().time_since_epoch()).count();
 
     T total = T(0);
     if (cpuReader.has_value()) total += static_cast<T>(cpuReader->getLatestValue());

@@ -2,7 +2,6 @@
 #define MY_TIMER_H
 
 #include "p3em.h"
-#include <stdbool.h>
 
 typedef struct {
     int initialized;

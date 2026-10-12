@@ -13,7 +13,7 @@
 #- choose compiler
 MYCXX=mpiicpx
 
-for i in "mainDouble" "mainChrono"
+for i in "testDouble" "testChrono"
 do
  $MYCXX -o $i.bat $i.cpp -pthread
 done
